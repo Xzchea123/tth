@@ -25,14 +25,15 @@ local function makeButton(name, posY)
 end
 
 --=== ESP LOGIC ===--
-local espBtn       = makeButton("ESP", 10)
-local espEnabled   = false
-local espTargets   = {
-    Ammo       = Color3.fromRGB(255, 255, 255),
-    Medkit     = Color3.fromRGB(255,   0,   0),
-    ["Body Armor"] = Color3.fromRGB(  0, 255, 255),
-}
+local espBtn     = makeButton("ESP", 10)
+local espEnabled = false
 local espCon
+local espTargets = {
+    Ammo          = Color3.fromRGB(255, 255, 255),
+    Medkit       = Color3.fromRGB(255,   0,   0),
+    ["Body Armor"] = Color3.fromRGB(  0, 255, 255),
+    ["Gas Mask"]   = Color3.fromRGB(150, 255, 150),
+}
 
 local function clearESP()
     local itemsHolder = Workspace:FindFirstChild("Ignore")
@@ -49,29 +50,27 @@ end
 local function updateESP()
     local itemsHolder = Workspace:WaitForChild("Ignore")
          :WaitForChild("Items")
-    -- initial
     for _, it in ipairs(itemsHolder:GetChildren()) do
         if espTargets[it.Name] and not it:FindFirstChildOfClass("Highlight") then
             local hl = Instance.new("Highlight")
-            hl.FillColor       = espTargets[it.Name]
-            hl.OutlineColor    = espTargets[it.Name]
+            hl.FillColor        = espTargets[it.Name]
+            hl.OutlineColor     = espTargets[it.Name]
             hl.FillTransparency = 0.2
             hl.OutlineTransparency = 0.5
-            hl.Adornee         = it
-            hl.Parent          = it
+            hl.Adornee          = it
+            hl.Parent           = it
         end
     end
-    -- on spawn
     espCon = itemsHolder.ChildAdded:Connect(function(it)
         task.wait(0.2)
         if espTargets[it.Name] then
             local hl = Instance.new("Highlight")
-            hl.FillColor       = espTargets[it.Name]
-            hl.OutlineColor    = espTargets[it.Name]
+            hl.FillColor        = espTargets[it.Name]
+            hl.OutlineColor     = espTargets[it.Name]
             hl.FillTransparency = 0.2
             hl.OutlineTransparency = 0.5
-            hl.Adornee         = it
-            hl.Parent          = it
+            hl.Adornee          = it
+            hl.Parent           = it
         end
     end)
 end
@@ -80,15 +79,13 @@ espBtn.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
     clearESP()
-    if espEnabled then
-        updateESP()
-    end
+    if espEnabled then updateESP() end
 end)
 
 --=== SILENT AIM (Hitbox Expander) ===--
-local saBtn        = makeButton("Silent Aim", 50)
-local saEnabled    = false
-local saLoop
+local saBtn     = makeButton("Silent Aim", 50)
+local saEnabled = false
+local saThread
 
 local function startSilentAim()
     local infectedFolder = Workspace:FindFirstChild("Entities")
@@ -97,18 +94,18 @@ local function startSilentAim()
         warn("Entities.Infected not found")
         return
     end
-    saLoop = task.spawn(function()
+    saThread = task.spawn(function()
         while saEnabled do
             for _, ent in ipairs(infectedFolder:GetChildren()) do
                 if ent:IsA("Model") and ent:FindFirstChild("Head") then
                     pcall(function()
                         local head = ent.Head
-                        head.Size        = Vector3.new(100,100,100)
-                        head.CanCollide  = false
-                        head.Material    = Enum.Material.ForceField
-                        head.BrickColor  = BrickColor.new("Really red")
+                        head.Size         = Vector3.new(100, 100, 100)
+                        head.CanCollide   = false
+                        head.Material     = Enum.Material.ForceField
+                        head.BrickColor   = BrickColor.new("Really red")
                         head.Transparency = 0.4
-                        head.Massless    = true
+                        head.Massless     = true
                     end)
                 end
             end
@@ -119,8 +116,7 @@ end
 
 local function stopSilentAim()
     saEnabled = false
-    -- head sizes will reset on respawn or server update
-    -- loop will exit automatically
+    -- Loop will exit automatically
 end
 
 saBtn.MouseButton1Click:Connect(function()
