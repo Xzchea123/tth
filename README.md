@@ -1,4 +1,4 @@
--- Solara-Compatible GUI with ESP & Silent Aim
+-- Solara-Compatible GUI with Title, ESP & Silent Aim
 local Workspace   = game:GetService("Workspace")
 local CoreGui     = game:GetService("CoreGui")
 local Players     = game:GetService("Players")
@@ -8,6 +8,18 @@ local LocalPlayer = Players.LocalPlayer
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ESPandSilentAimGui"
 ScreenGui.Parent = CoreGui
+
+-- Title Label
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(0, 300, 0, 30)
+TitleLabel.Position = UDim2.new(0, 10, 0, 10)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "Those Who Remain  –  By Avoid"
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 17
+TitleLabel.TextColor3 = Color3.fromRGB(0, 0, 255)
+TitleLabel.TextStrokeTransparency = 0.5
+TitleLabel.Parent = ScreenGui
 
 -- Common button styling
 local function makeButton(name, posY)
@@ -25,12 +37,12 @@ local function makeButton(name, posY)
 end
 
 --=== ESP LOGIC ===--
-local espBtn     = makeButton("ESP", 10)
+local espBtn     = makeButton("ESP", 50)
 local espEnabled = false
 local espCon
 local espTargets = {
     Ammo          = Color3.fromRGB(255, 255, 255),
-    Medkit       = Color3.fromRGB(255,   0,   0),
+    Medkits       = Color3.fromRGB(255,   0,   0),
     ["Body Armor"] = Color3.fromRGB(  0, 255, 255),
     ["Gas Mask"]   = Color3.fromRGB(150, 255, 150),
 }
@@ -83,7 +95,7 @@ espBtn.MouseButton1Click:Connect(function()
 end)
 
 --=== SILENT AIM (Hitbox Expander) ===--
-local saBtn     = makeButton("Silent Aim", 50)
+local saBtn     = makeButton("Silent Aim", 90)
 local saEnabled = false
 local saThread
 
