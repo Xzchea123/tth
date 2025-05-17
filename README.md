@@ -42,7 +42,7 @@ local espEnabled = false
 local espCon
 local espTargets = {
     Ammo          = Color3.fromRGB(255, 255, 255),
-    Medkits       = Color3.fromRGB(255,   0,   0),
+    Medkit       = Color3.fromRGB(255,   0,   0),
     ["Body Armor"] = Color3.fromRGB(  0, 255, 255),
     ["Gas Mask"]   = Color3.fromRGB(150, 255, 150),
 }
