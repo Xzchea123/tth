@@ -273,7 +273,7 @@ fullBrightBtn.MouseButton1Click:Connect(function()
         if fullBrightLoop then fullBrightLoop:Disconnect() end
         fullBrightLoop = RunService.RenderStepped:Connect(function()
             Lighting.Ambient = Color3.new(1, 1, 1)
-            Lighting.Brightness = 3
+            Lighting.Brightness = 10
         end)
     else
         if fullBrightLoop then fullBrightLoop:Disconnect() end
