@@ -1,211 +1,341 @@
--- Solara-Compatible GUI with Title, ESP, Silent Aim, No Fog & Fullbright (with loops)
-local Workspace   = game:GetService("Workspace")
-local Lighting    = game:GetService("Lighting")
-local CoreGui     = game:GetService("CoreGui")
-local Players     = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
---=== GUI SETUP ===--
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name   = "ThoseWhoRemainGui"
-ScreenGui.Parent = CoreGui
-
--- Title Label
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size                   = UDim2.new(0, 300, 0, 30)
-TitleLabel.Position               = UDim2.new(0, 10, 0, 10)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text                   = "Those Who Remain  –  By Avoid"
-TitleLabel.Font                   = Enum.Font.GothamBold
-TitleLabel.TextSize               = 20
-TitleLabel.TextColor3             = Color3.new(1,1,1)
-TitleLabel.Parent                 = ScreenGui
-
--- Button factory
-local function makeButton(name, y)
-    local b = Instance.new("TextButton")
-    b.Size             = UDim2.new(0, 140, 0, 30)
-    b.Position         = UDim2.new(0, 10, 0, y)
-    b.Text             = name .. ": OFF"
-    b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    b.TextColor3       = Color3.new(1,1,1)
-    b.Font             = Enum.Font.Code
-    b.TextSize         = 16
-    b.AutoButtonColor  = true
-    b.Parent           = ScreenGui
-    return b
+-- Destroy existing UI if already there
+if CoreGui:FindFirstChild("TWR_GUI") then
+    CoreGui.TWR_GUI:Destroy()
 end
 
---=== ESP ===--
-local espBtn     = makeButton("ESP", 50)
+local gui = Instance.new("ScreenGui")
+gui.Name = "TWR_GUI"
+gui.Parent = CoreGui
+gui.ResetOnSpawn = false
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = gui
+mainFrame.Size = UDim2.new(0, 320, 0, 370)
+mainFrame.Position = UDim2.new(0, 100, 0, 100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+
+-- UICorner for rounded frame
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Title Bar
+local titleBar = Instance.new("TextLabel")
+titleBar.Parent = mainFrame
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+titleBar.Text = "Those Who Remain – Avoid"
+titleBar.Font = Enum.Font.GothamBold
+titleBar.TextSize = 18
+titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleBar.TextXAlignment = Enum.TextXAlignment.Center
+
+-- Dragging
+local dragging, dragInput, dragStart, startPos
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+titleBar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Toggle Button Factory
+local function createToggle(name, yOffset)
+	local btn = Instance.new("TextButton")
+	btn.Parent = mainFrame
+	btn.Size = UDim2.new(0, 140, 0, 30)
+	btn.Position = UDim2.new(0, 10, 0, yOffset)
+	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	btn.Text = name .. ": OFF"
+	btn.Font = Enum.Font.Code
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.TextSize = 14
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = btn
+	return btn
+end
+
+-- Slider Factory - Returns [label, slider, fill]
+local function createSlider(name, yOffset, min, max, default, callback)
+	local label = Instance.new("TextLabel")
+	label.Parent = mainFrame
+	label.Position = UDim2.new(0, 10, 0, yOffset)
+	label.Size = UDim2.new(0, 140, 0, 20)
+	label.Text = name .. ": " .. tostring(default)
+	label.Font = Enum.Font.Code
+	label.TextSize = 14
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.BackgroundTransparency = 1
+
+	local slider = Instance.new("Frame")
+	slider.Parent = mainFrame
+	slider.Position = UDim2.new(0, 10, 0, yOffset + 20)
+	slider.Size = UDim2.new(0, 140, 0, 8)
+	slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	Instance.new("UICorner", slider).CornerRadius = UDim.new(0, 5)
+
+	local fill = Instance.new("Frame")
+	fill.Parent = slider
+	fill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(120, 120, 255)
+	fill.BorderSizePixel = 0
+	fill.ZIndex = 2
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 5)
+
+	local dragging = false
+	slider.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+		end
+	end)
+	slider.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local scale = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+			local val = math.floor(min + (max - min) * scale)
+			fill.Size = UDim2.new(scale, 0, 1, 0)
+			label.Text = name .. ": " .. val
+			callback(val)
+		end
+	end)
+	return label, slider, fill
+end
+
+-- ESP (ITEMS ONLY - ZOMBIE ESP REMOVED)
+local espBtn = createToggle("ESP", 40)
 local espEnabled = false
-local espCon
 local espTargets = {
-    Ammo          = Color3.fromRGB(255, 255, 255),
-    Medkit        = Color3.fromRGB(255,   0,   0),
-    ["Body Armor"] = Color3.fromRGB(  0, 255, 255),
-    ["Gas Mask"]   = Color3.fromRGB(150, 255, 150),
+    Ammo = Color3.fromRGB(255, 255, 255),
+    Medkit = Color3.fromRGB(255, 0, 0),
+    ["Body Armor"] = Color3.fromRGB(0, 255, 255),
+    ["Gas Mask"] = Color3.fromRGB(150, 255, 150),
+    -- Zombie = Color3.fromRGB(255, 0, 255), -- REMOVED: No more ESP for infected/zombies
 }
+local espCon
 
 local function clearESP()
-    local itemsHolder = Workspace:FindFirstChild("Ignore")
-                        and Workspace.Ignore:FindFirstChild("Items")
-    if not itemsHolder then return end
-    for _, it in ipairs(itemsHolder:GetChildren()) do
-        local h = it:FindFirstChildWhichIsA("Highlight")
-        if h then h:Destroy() end
+    -- Remove highlights from items
+    local ignore = Workspace:FindFirstChild("Ignore")
+    local items = ignore and ignore:FindFirstChild("Items")
+    if items then
+        for _, item in pairs(items:GetChildren()) do
+            local h = item:FindFirstChildWhichIsA("Highlight")
+            if h then h:Destroy() end
+        end
     end
-    if espCon then espCon:Disconnect() end
-    espCon = nil
+    -- Remove highlights from zombies (for cleanup if ever applied previously)
+    local infected = Workspace:FindFirstChild("Entities") and Workspace.Entities:FindFirstChild("Infected")
+    if infected then
+        for _, z in pairs(infected:GetChildren()) do
+            local h = z:FindFirstChildWhichIsA("Highlight")
+            if h then h:Destroy() end
+        end
+    end
+    if espCon then espCon:Disconnect() espCon = nil end
 end
 
 local function updateESP()
-    local itemsHolder = Workspace:WaitForChild("Ignore")
-                         :WaitForChild("Items")
-    for _, it in ipairs(itemsHolder:GetChildren()) do
-        if espTargets[it.Name] and not it:FindFirstChildOfClass("Highlight") then
-            local hl = Instance.new("Highlight")
-            hl.FillColor        = espTargets[it.Name]
-            hl.OutlineColor     = espTargets[it.Name]
-            hl.FillTransparency = 0.2
-            hl.OutlineTransparency = 0.5
-            hl.Adornee          = it
-            hl.Parent           = it
+    -- Items only
+    local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
+    if items then
+        for _, it in pairs(items:GetChildren()) do
+            if espTargets[it.Name] and not it:FindFirstChildOfClass("Highlight") then
+                local hl = Instance.new("Highlight")
+                hl.FillColor = espTargets[it.Name]
+                hl.OutlineColor = espTargets[it.Name]
+                hl.FillTransparency = 0.2
+                hl.OutlineTransparency = 0.5
+                hl.Adornee = it
+                hl.Parent = it
+            end
         end
     end
-    espCon = itemsHolder.ChildAdded:Connect(function(it)
-        task.wait(0.2)
-        if espTargets[it.Name] then
-            local hl = Instance.new("Highlight")
-            hl.FillColor        = espTargets[it.Name]
-            hl.OutlineColor     = espTargets[it.Name]
-            hl.FillTransparency = 0.2
-            hl.OutlineTransparency = 0.5
-            hl.Adornee          = it
-            hl.Parent           = it
-        end
-    end)
+    -- No zombie ESP!
+end
+
+local function enableESP()
+    updateESP()
+    -- Loop ESP for new items only
+    if espCon then espCon:Disconnect() end
+    espCon = RunService.Heartbeat:Connect(function() updateESP() end)
 end
 
 espBtn.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
     clearESP()
-    if espEnabled then updateESP() end
+    if espEnabled then
+        enableESP()
+    end
 end)
-
---=== SILENT AIM ===--
-local saBtn     = makeButton("Silent Aim", 90)
+-- Silent Aim
+local saBtn = createToggle("Silent Aim", 80)
 local saEnabled = false
-local saThread
+local saTransparency = 0.4
+local saLoop
 
-local function startSilentAim()
-    local folder = Workspace:FindFirstChild("Entities")
-                   and Workspace.Entities:FindFirstChild("Infected")
-    if not folder then return warn("Entities.Infected not found") end
-    saThread = task.spawn(function()
-        while saEnabled do
-            for _, ent in ipairs(folder:GetChildren()) do
-                if ent:IsA("Model") and ent:FindFirstChild("Head") then
-                    pcall(function()
-                        local head = ent.Head
-                        head.Size         = Vector3.new(100,100,100)
-                        head.CanCollide   = false
-                        head.Material     = Enum.Material.ForceField
-                        head.BrickColor   = BrickColor.new("Really red")
-                        head.Transparency = 0.4
-                        head.Massless     = true
-                    end)
-                end
-            end
-            task.wait(0.5)
-        end
-    end)
+local function applySilentAim()
+	local folder = Workspace:FindFirstChild("Entities") and Workspace.Entities:FindFirstChild("Infected")
+	if not folder then return end
+	for _, ent in pairs(folder:GetChildren()) do
+		if ent:IsA("Model") and ent:FindFirstChild("Head") then
+			local head = ent.Head
+			head.Size = Vector3.new(100, 100, 100)
+			head.CanCollide = false
+			head.Material = Enum.Material.Neon
+			head.BrickColor = BrickColor.new("Institutional white")
+			head.Transparency = saTransparency
+			head.Massless = true
+		end
+	end
 end
 
 saBtn.MouseButton1Click:Connect(function()
-    saEnabled = not saEnabled
-    saBtn.Text = "Silent Aim: " .. (saEnabled and "ON" or "OFF")
-    if saEnabled then startSilentAim() else saEnabled = false end
+	saEnabled = not saEnabled
+	saBtn.Text = "Silent Aim: " .. (saEnabled and "ON" or "OFF")
+	if saLoop then saLoop:Disconnect() saLoop = nil end
+	if saEnabled then
+		saLoop = RunService.Heartbeat:Connect(function()
+			applySilentAim()
+		end)
+	else
+		-- Reset heads to invisible
+		local folder = Workspace:FindFirstChild("Entities") and Workspace.Entities:FindFirstChild("Infected")
+		if folder then
+			for _, ent in pairs(folder:GetChildren()) do
+				if ent:IsA("Model") and ent:FindFirstChild("Head") then
+					ent.Head.Transparency = 1
+				end
+			end
+		end
+	end
 end)
 
---=== NO FOG (with loop) ===--
-local fogBtn     = makeButton("No Fog", 130)
-local fogEnabled = false
-local fogThread
+-- FOV Control (Slider + Loop)
+local currentFOV = 70
+local fovLabel, fovSlider, fovFill = createSlider("FOV", 120, 70, 120, 70, function(val)
+	currentFOV = val
+end)
+local fovLoop
+if fovLoop then fovLoop:Disconnect() end
+fovLoop = RunService.RenderStepped:Connect(function()
+	if workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView ~= currentFOV then
+		workspace.CurrentCamera.FieldOfView = currentFOV
+	end
+end)
 
-local originalFogStart = Lighting.FogStart
-local originalFogEnd   = Lighting.FogEnd
+-- Silent Aim Transparency Control (Slider)
+createSlider("SA Transparency", 180, 0, 100, 40, function(val)
+	saTransparency = val / 100
+end)
+
+-- Full Bright (Slider + Loop)
+local fullBrightBtn = createToggle("Full Bright", 240)
+local fullBrightEnabled = false
+local originalAmbient = Lighting.Ambient
+local originalBrightness = Lighting.Brightness
+local fullBrightLoop
+
+fullBrightBtn.MouseButton1Click:Connect(function()
+    fullBrightEnabled = not fullBrightEnabled
+    fullBrightBtn.Text = "Full Bright: " .. (fullBrightEnabled and "ON" or "OFF")
+    if fullBrightEnabled then
+        if fullBrightLoop then fullBrightLoop:Disconnect() end
+        fullBrightLoop = RunService.RenderStepped:Connect(function()
+            Lighting.Ambient = Color3.new(1, 1, 1)
+            Lighting.Brightness = 3
+        end)
+    else
+        if fullBrightLoop then fullBrightLoop:Disconnect() end
+        Lighting.Ambient = originalAmbient
+        Lighting.Brightness = originalBrightness
+    end
+end)
+
+-- No Fog (Slider + Loop)
+local fogBtn = createToggle("No Fog", 280)
+local fogEnabled = false
+local originalFogEnd = Lighting.FogEnd
+local fogLoop
 
 fogBtn.MouseButton1Click:Connect(function()
     fogEnabled = not fogEnabled
     fogBtn.Text = "No Fog: " .. (fogEnabled and "ON" or "OFF")
     if fogEnabled then
-        fogThread = task.spawn(function()
-            while fogEnabled do
-                Lighting.FogStart = 0
-                Lighting.FogEnd   = 1e6
-                for _, v in ipairs(Lighting:GetDescendants()) do
-                    if v:IsA("Atmosphere") then v:Destroy() end
-                end
-                task.wait(1)
-            end
+        if fogLoop then fogLoop:Disconnect() end
+        fogLoop = RunService.RenderStepped:Connect(function()
+            Lighting.FogEnd = 1000000
         end)
     else
-        fogEnabled = false
-        if fogThread then task.cancel(fogThread); fogThread = nil end
-        Lighting.FogStart = originalFogStart
-        Lighting.FogEnd   = originalFogEnd
+        if fogLoop then fogLoop:Disconnect() end
+        Lighting.FogEnd = originalFogEnd
     end
 end)
 
---=== FULLBRIGHT (with loop) ===--
-local fbBtn       = makeButton("Fullbright", 170)
-local fbEnabled   = false
-local fbThread
+-- Mouse Lock/Unlock Keybind (')
+local mouseFree = false
+local mouseLoop
 
-local originalProps = {
-    Ambient        = Lighting.Ambient,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    Brightness     = Lighting.Brightness,
-    GlobalShadows  = Lighting.GlobalShadows
-}
-local effectStates = {}
-for _, eff in ipairs(Lighting:GetDescendants()) do
-    if eff:IsA("ColorCorrectionEffect")
-    or eff:IsA("BloomEffect")
-    or eff:IsA("SunRaysEffect")
-    or eff:IsA("DepthOfFieldEffect")
-    or eff:IsA("BlurEffect") then
-        effectStates[eff] = eff.Enabled
-    end
-end
-
-fbBtn.MouseButton1Click:Connect(function()
-    fbEnabled = not fbEnabled
-    fbBtn.Text = "Fullbright: " .. (fbEnabled and "ON" or "OFF")
-    if fbEnabled then
-        fbThread = task.spawn(function()
-            while fbEnabled do
-                Lighting.Ambient        = Color3.new(1,1,1)
-                Lighting.OutdoorAmbient = Color3.new(1,1,1)
-                Lighting.Brightness     = 2
-                Lighting.GlobalShadows  = false
-                for eff, _ in pairs(effectStates) do
-                    if eff and eff.Parent then eff.Enabled = false end
-                end
-                task.wait(1)
-            end
-        end)
-    else
-        fbEnabled = false
-        if fbThread then task.cancel(fbThread); fbThread = nil end
-        Lighting.Ambient        = originalProps.Ambient
-        Lighting.OutdoorAmbient = originalProps.OutdoorAmbient
-        Lighting.Brightness     = originalProps.Brightness
-        Lighting.GlobalShadows  = originalProps.GlobalShadows
-        for eff, state in pairs(effectStates) do
-            if eff and eff.Parent then eff.Enabled = state end
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.KeyCode == Enum.KeyCode.Quote and not gpe then
+        mouseFree = not mouseFree
+        if mouseFree then
+            if mouseLoop then mouseLoop:Disconnect() end
+            mouseLoop = RunService.RenderStepped:Connect(function()
+                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+                UserInputService.MouseIconEnabled = true
+            end)
+        else
+            if mouseLoop then mouseLoop:Disconnect() end
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+            UserInputService.MouseIconEnabled = false
         end
+    -- GUI hide/show keybind (])
+    elseif input.KeyCode == Enum.KeyCode.RightBracket and not gpe then
+        gui.Enabled = not gui.Enabled
+    end
+end)
+
+gui.AncestryChanged:Connect(function()
+    if not gui:IsDescendantOf(game) then
+        if espCon then espCon:Disconnect() end
+        if zombieAddedCon then zombieAddedCon:Disconnect() end
+        if saLoop then saLoop:Disconnect() end
+        if fovLoop then fovLoop:Disconnect() end
+        if fullBrightLoop then fullBrightLoop:Disconnect() end
+        if fogLoop then fogLoop:Disconnect() end
+        if mouseLoop then mouseLoop:Disconnect() end
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        UserInputService.MouseIconEnabled = true
     end
 end)
