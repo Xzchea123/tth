@@ -131,7 +131,6 @@ local function createSlider(name, yOffset, min, max, default, callback)
 	return label, slider, fill
 end
 
--- ESP (ITEMS ONLY - ZOMBIE ESP REMOVED)
 local espBtn = createToggle("ESP", 40)
 local espEnabled = false
 local espTargets = {
@@ -139,61 +138,63 @@ local espTargets = {
     Medkit = Color3.fromRGB(255, 0, 0),
     ["Body Armor"] = Color3.fromRGB(0, 255, 255),
     ["Gas Mask"] = Color3.fromRGB(150, 255, 150),
-    -- Zombie = Color3.fromRGB(255, 0, 255), -- REMOVED: No more ESP for infected/zombies
 }
-local espCon
+local itemConnections = {}
 
-local function clearESP()
-    -- Remove highlights from items
-    local ignore = Workspace:FindFirstChild("Ignore")
-    local items = ignore and ignore:FindFirstChild("Items")
-    if items then
-        for _, item in pairs(items:GetChildren()) do
-            local h = item:FindFirstChildWhichIsA("Highlight")
-            if h then h:Destroy() end
-        end
+local function addESP(item)
+    if espTargets[item.Name] and not item:FindFirstChildOfClass("Highlight") then
+        local hl = Instance.new("Highlight")
+        hl.FillColor = espTargets[item.Name]
+        hl.OutlineColor = espTargets[item.Name]
+        hl.FillTransparency = 0.2
+        hl.OutlineTransparency = 0.5
+        hl.Adornee = item
+        hl.Parent = item
     end
-    -- Remove highlights from zombies (for cleanup if ever applied previously)
-    local infected = Workspace:FindFirstChild("Entities") and Workspace.Entities:FindFirstChild("Infected")
-    if infected then
-        for _, z in pairs(infected:GetChildren()) do
-            local h = z:FindFirstChildWhichIsA("Highlight")
-            if h then h:Destroy() end
-        end
-    end
-    if espCon then espCon:Disconnect() espCon = nil end
 end
 
-local function updateESP()
-    -- Items only
+local function removeESP(item)
+    for _, h in pairs(item:GetChildren()) do
+        if h:IsA("Highlight") then h:Destroy() end
+    end
+end
+
+local function clearAllESP()
+    -- Disconnect all connections
+    for _, con in pairs(itemConnections) do
+        con:Disconnect()
+    end
+    table.clear(itemConnections)
+    -- Remove all highlights
     local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
     if items then
-        for _, it in pairs(items:GetChildren()) do
-            if espTargets[it.Name] and not it:FindFirstChildOfClass("Highlight") then
-                local hl = Instance.new("Highlight")
-                hl.FillColor = espTargets[it.Name]
-                hl.OutlineColor = espTargets[it.Name]
-                hl.FillTransparency = 0.2
-                hl.OutlineTransparency = 0.5
-                hl.Adornee = it
-                hl.Parent = it
-            end
+        for _, item in pairs(items:GetChildren()) do
+            removeESP(item)
         end
     end
-    -- No zombie ESP!
 end
 
 local function enableESP()
-    updateESP()
-    -- Loop ESP for new items only
-    if espCon then espCon:Disconnect() end
-    espCon = RunService.Heartbeat:Connect(function() updateESP() end)
+    local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
+    if not items then return end
+    -- Add ESP to all current items
+    for _, item in pairs(items:GetChildren()) do
+        addESP(item)
+    end
+    -- Listen for new items
+    itemConnections["childAdded"] = items.ChildAdded:Connect(function(item)
+        addESP(item)
+    end)
+    -- Clean up ESP when items are removed
+    itemConnections["childRemoved"] = items.ChildRemoved:Connect(function(item)
+        removeESP(item)
+    end)
 end
 
 espBtn.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
-    clearESP()
+    clearAllESP()
     if espEnabled then
         enableESP()
     end
