@@ -25,11 +25,7 @@ mainFrame.Position = UDim2.new(0, 100, 0, 100)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.BorderSizePixel = 0
 mainFrame.ClipsDescendants = true
-
--- UICorner for rounded frame
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = mainFrame
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
 -- Title Bar
 local titleBar = Instance.new("TextLabel")
@@ -75,13 +71,11 @@ local function createToggle(name, yOffset)
 	btn.Font = Enum.Font.Code
 	btn.TextColor3 = Color3.new(1,1,1)
 	btn.TextSize = 14
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = btn
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	return btn
 end
 
--- Slider Factory - Returns [label, slider, fill]
+-- Slider Factory
 local function createSlider(name, yOffset, min, max, default, callback)
 	local label = Instance.new("TextLabel")
 	label.Parent = mainFrame
@@ -131,74 +125,60 @@ local function createSlider(name, yOffset, min, max, default, callback)
 	return label, slider, fill
 end
 
+-- ESP
 local espBtn = createToggle("ESP", 40)
 local espEnabled = false
 local espTargets = {
-    Ammo = Color3.fromRGB(255, 255, 255),
-    Medkit = Color3.fromRGB(255, 0, 0),
-    ["Body Armor"] = Color3.fromRGB(0, 255, 255),
-    ["Gas Mask"] = Color3.fromRGB(150, 255, 150),
+	Ammo = Color3.fromRGB(255, 255, 255),
+	Medkit = Color3.fromRGB(255, 0, 0),
+	["Body Armor"] = Color3.fromRGB(0, 255, 255),
+	["Gas Mask"] = Color3.fromRGB(150, 255, 150),
 }
-local itemConnections = {}
+local espCon
 
-local function addESP(item)
-    if espTargets[item.Name] and not item:FindFirstChildOfClass("Highlight") then
-        local hl = Instance.new("Highlight")
-        hl.FillColor = espTargets[item.Name]
-        hl.OutlineColor = espTargets[item.Name]
-        hl.FillTransparency = 0.2
-        hl.OutlineTransparency = 0.5
-        hl.Adornee = item
-        hl.Parent = item
-    end
+local function clearESP()
+	local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
+	if items then
+		for _, item in pairs(items:GetChildren()) do
+			local h = item:FindFirstChildWhichIsA("Highlight")
+			if h then h:Destroy() end
+		end
+	end
+	if espCon then espCon:Disconnect() espCon = nil end
 end
 
-local function removeESP(item)
-    for _, h in pairs(item:GetChildren()) do
-        if h:IsA("Highlight") then h:Destroy() end
-    end
-end
-
-local function clearAllESP()
-    -- Disconnect all connections
-    for _, con in pairs(itemConnections) do
-        con:Disconnect()
-    end
-    table.clear(itemConnections)
-    -- Remove all highlights
-    local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
-    if items then
-        for _, item in pairs(items:GetChildren()) do
-            removeESP(item)
-        end
-    end
+local function updateESP()
+	local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
+	if items then
+		for _, it in pairs(items:GetChildren()) do
+			if espTargets[it.Name] and not it:FindFirstChildOfClass("Highlight") then
+				local hl = Instance.new("Highlight")
+				hl.FillColor = espTargets[it.Name]
+				hl.OutlineColor = espTargets[it.Name]
+				hl.FillTransparency = 0.2
+				hl.OutlineTransparency = 0.5
+				hl.Adornee = it
+				hl.Parent = it
+			end
+		end
+	end
 end
 
 local function enableESP()
-    local items = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Items")
-    if not items then return end
-    -- Add ESP to all current items
-    for _, item in pairs(items:GetChildren()) do
-        addESP(item)
-    end
-    -- Listen for new items
-    itemConnections["childAdded"] = items.ChildAdded:Connect(function(item)
-        addESP(item)
-    end)
-    -- Clean up ESP when items are removed
-    itemConnections["childRemoved"] = items.ChildRemoved:Connect(function(item)
-        removeESP(item)
-    end)
+	updateESP()
+	if espCon then espCon:Disconnect() end
+	espCon = RunService.Heartbeat:Connect(updateESP)
 end
 
 espBtn.MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
-    clearAllESP()
-    if espEnabled then
-        enableESP()
-    end
+	espEnabled = not espEnabled
+	espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+	clearESP()
+	if espEnabled then
+		enableESP()
+	end
 end)
+
 -- Silent Aim
 local saBtn = createToggle("Silent Aim", 80)
 local saEnabled = false
@@ -226,11 +206,8 @@ saBtn.MouseButton1Click:Connect(function()
 	saBtn.Text = "Silent Aim: " .. (saEnabled and "ON" or "OFF")
 	if saLoop then saLoop:Disconnect() saLoop = nil end
 	if saEnabled then
-		saLoop = RunService.Heartbeat:Connect(function()
-			applySilentAim()
-		end)
+		saLoop = RunService.Heartbeat:Connect(applySilentAim)
 	else
-		-- Reset heads to invisible
 		local folder = Workspace:FindFirstChild("Entities") and Workspace.Entities:FindFirstChild("Infected")
 		if folder then
 			for _, ent in pairs(folder:GetChildren()) do
@@ -242,25 +219,23 @@ saBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- FOV Control (Slider + Loop)
+-- FOV
 local currentFOV = 70
 local fovLabel, fovSlider, fovFill = createSlider("FOV", 120, 70, 120, 70, function(val)
 	currentFOV = val
 end)
-local fovLoop
-if fovLoop then fovLoop:Disconnect() end
-fovLoop = RunService.RenderStepped:Connect(function()
+local fovLoop = RunService.RenderStepped:Connect(function()
 	if workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView ~= currentFOV then
 		workspace.CurrentCamera.FieldOfView = currentFOV
 	end
 end)
 
--- Silent Aim Transparency Control (Slider)
+-- Silent Aim Transparency
 createSlider("SA Transparency", 180, 0, 100, 40, function(val)
 	saTransparency = val / 100
 end)
 
--- Full Bright (Slider + Loop)
+-- Full Bright
 local fullBrightBtn = createToggle("Full Bright", 240)
 local fullBrightEnabled = false
 local originalAmbient = Lighting.Ambient
@@ -268,75 +243,73 @@ local originalBrightness = Lighting.Brightness
 local fullBrightLoop
 
 fullBrightBtn.MouseButton1Click:Connect(function()
-    fullBrightEnabled = not fullBrightEnabled
-    fullBrightBtn.Text = "Full Bright: " .. (fullBrightEnabled and "ON" or "OFF")
-    if fullBrightEnabled then
-        if fullBrightLoop then fullBrightLoop:Disconnect() end
-        fullBrightLoop = RunService.RenderStepped:Connect(function()
-            Lighting.Ambient = Color3.new(1, 1, 1)
-            Lighting.Brightness = 10
-        end)
-    else
-        if fullBrightLoop then fullBrightLoop:Disconnect() end
-        Lighting.Ambient = originalAmbient
-        Lighting.Brightness = originalBrightness
-    end
+	fullBrightEnabled = not fullBrightEnabled
+	fullBrightBtn.Text = "Full Bright: " .. (fullBrightEnabled and "ON" or "OFF")
+	if fullBrightEnabled then
+		if fullBrightLoop then fullBrightLoop:Disconnect() end
+		fullBrightLoop = RunService.RenderStepped:Connect(function()
+			Lighting.Ambient = Color3.new(1, 1, 1)
+			Lighting.Brightness = 3
+		end)
+	else
+		if fullBrightLoop then fullBrightLoop:Disconnect() end
+		Lighting.Ambient = originalAmbient
+		Lighting.Brightness = originalBrightness
+	end
 end)
 
--- No Fog (Slider + Loop)
+-- No Fog
 local fogBtn = createToggle("No Fog", 280)
 local fogEnabled = false
 local originalFogEnd = Lighting.FogEnd
 local fogLoop
 
 fogBtn.MouseButton1Click:Connect(function()
-    fogEnabled = not fogEnabled
-    fogBtn.Text = "No Fog: " .. (fogEnabled and "ON" or "OFF")
-    if fogEnabled then
-        if fogLoop then fogLoop:Disconnect() end
-        fogLoop = RunService.RenderStepped:Connect(function()
-            Lighting.FogEnd = 1000000
-        end)
-    else
-        if fogLoop then fogLoop:Disconnect() end
-        Lighting.FogEnd = originalFogEnd
-    end
+	fogEnabled = not fogEnabled
+	fogBtn.Text = "No Fog: " .. (fogEnabled and "ON" or "OFF")
+	if fogEnabled then
+		if fogLoop then fogLoop:Disconnect() end
+		fogLoop = RunService.RenderStepped:Connect(function()
+			Lighting.FogEnd = 1000000
+		end)
+	else
+		if fogLoop then fogLoop:Disconnect() end
+		Lighting.FogEnd = originalFogEnd
+	end
 end)
 
--- Mouse Lock/Unlock Keybind (')
+-- Input for GUI and Mouse Lock
 local mouseFree = false
 local mouseLoop
 
 UserInputService.InputBegan:Connect(function(input, gpe)
-    if input.KeyCode == Enum.KeyCode.Quote and not gpe then
-        mouseFree = not mouseFree
-        if mouseFree then
-            if mouseLoop then mouseLoop:Disconnect() end
-            mouseLoop = RunService.RenderStepped:Connect(function()
-                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-                UserInputService.MouseIconEnabled = true
-            end)
-        else
-            if mouseLoop then mouseLoop:Disconnect() end
-            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
-            UserInputService.MouseIconEnabled = false
-        end
-    -- GUI hide/show keybind (])
-    elseif input.KeyCode == Enum.KeyCode.RightBracket and not gpe then
-        gui.Enabled = not gui.Enabled
-    end
+	if input.KeyCode == Enum.KeyCode.Quote and not gpe then
+		mouseFree = not mouseFree
+		if mouseFree then
+			if mouseLoop then mouseLoop:Disconnect() end
+			mouseLoop = RunService.RenderStepped:Connect(function()
+				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+				UserInputService.MouseIconEnabled = true
+			end)
+		else
+			if mouseLoop then mouseLoop:Disconnect() end
+			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+			UserInputService.MouseIconEnabled = false
+		end
+	elseif input.KeyCode == Enum.KeyCode.RightBracket and not gpe then
+		gui.Enabled = not gui.Enabled
+	end
 end)
 
 gui.AncestryChanged:Connect(function()
-    if not gui:IsDescendantOf(game) then
-        if espCon then espCon:Disconnect() end
-        if zombieAddedCon then zombieAddedCon:Disconnect() end
-        if saLoop then saLoop:Disconnect() end
-        if fovLoop then fovLoop:Disconnect() end
-        if fullBrightLoop then fullBrightLoop:Disconnect() end
-        if fogLoop then fogLoop:Disconnect() end
-        if mouseLoop then mouseLoop:Disconnect() end
-        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-        UserInputService.MouseIconEnabled = true
-    end
+	if not gui:IsDescendantOf(game) then
+		if espCon then espCon:Disconnect() end
+		if saLoop then saLoop:Disconnect() end
+		if fovLoop then fovLoop:Disconnect() end
+		if fullBrightLoop then fullBrightLoop:Disconnect() end
+		if fogLoop then fogLoop:Disconnect() end
+		if mouseLoop then mouseLoop:Disconnect() end
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
 end)
